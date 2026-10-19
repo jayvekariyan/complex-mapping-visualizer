@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Complex Mapping Visualizer (3D & 2D)</title>
+  
+  <!-- Math.js for complex function evaluation -->
+  <script src="https://cdn.jsdelivr.net/npm/mathjs@12.4.1/lib/browser/math.js"></script>
+  <!-- Plotly.js for high-performance 3D & 2D scientific plotting -->
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  <!-- Tailwind CSS CDN for styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+    .plot-container {
+      position: relative;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 py-4 sticky top-0 z-30 flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-xl font-bold text-white flex items-center gap-2">
+        <span class="text-indigo-400">ƒ(z)</span> Complex Function Visualizer
+      </h1>
+      <p class="text-xs text-slate-400">Interactive parallel-planes 3D mapping & 2D codomain analysis</p>
+    </div>
+    <div class="flex items-center gap-2 text-xs">
+      <span class="px-2.5 py-1 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-mono">z = x + iy</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Controls Panel (Left / Sidebar) -->
+    <aside class="lg:col-span-4 bg-slate-800/80 border border-slate-700/70 rounded-xl p-5 shadow-xl flex flex-col gap-5 h-fit">
+      
+      <!-- Preset Buttons -->
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Preset Functions</label>
+        <div class="grid grid-cols-3 gap-1.5 text-xs">
+          <button class="preset-btn px-2 py-1.5 bg-slate-700/60 hover:bg-indigo-600 rounded text-slate-200 transition font-mono" data-fn="exp(z)">exp(z)</button>
+          <button class="preset-btn px-2 py-1.5 bg-slate-700/60 hover:bg-indigo-600 rounded text-slate-200 transition font-mono" data-fn="z^2">z^2</button>
+          <button class="preset-btn px-2 py-1.5 bg-slate-700/60 hover:bg-indigo-600 rounded text-slate-200 transition font-mono" data-fn="sin(z)">sin(z)</button>
+          <button class="preset-btn px-2 py-1.5 bg-slate-700/60 hover:bg-indigo-600 rounded text-slate-200 transition font-mono" data-fn="1/z">1 / z</button>
+          <button class="preset-btn px-2 py-1.5 bg-slate-700/60 hover:bg-indigo-600 rounded text-slate-200 transition font-mono" data-fn="z^3 - z">z^3 - z</button>
+          <button class="preset-btn px-2 py-1.5 bg-slate-700/60 hover:bg-indigo-600 rounded text-slate-200 transition font-mono" data-fn="cosh(z)">cosh(z)</button>
+        </div>
+      </div>
+
+      <!-- Function Expression Input -->
+      <div>
+        <label for="functionInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+          Function f(z)
+        </label>
+        <div class="relative">
+          <input 
+            type="text" 
+            id="functionInput" 
+            value="exp(z)"
+            class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="e.g. exp(z), z^2, sin(z)"
+          />
+        </div>
+        <p id="errorMsg" class="text-rose-400 text-xs mt-1 hidden"></p>
+      </div>
+
+      <!-- Domain Configuration -->
+      <div class="space-y-3 border-t border-slate-700/70 pt-4">
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Domain Lines Configuration</label>
+        
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Constant x values (comma-separated):</label>
+          <input 
+            type="text" 
+            id="xConstantsInput" 
+            value="-2, -1, -0.5, 0, 0.5, 1, 2"
+            class="w-full px-3 py-1.5 bg-slate-900 border border-slate-600 rounded text-xs font-mono text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">y range [min, max]:</label>
+            <div class="flex items-center gap-1">
+              <input type="number" id="yMin" value="-2" step="0.5" class="w-full bg-slate-900 border border-slate-600 px-2 py-1 rounded text-xs font-mono text-white" />
+              <span class="text-slate-500 text-xs">to</span>
+              <input type="number" id="yMax" value="2" step="0.5" class="w-full bg-slate-900 border border-slate-600 px-2 py-1 rounded text-xs font-mono text-white" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">Points per line:</label>
+            <input type="number" id="ySteps" value="60" min="10" max="250" class="w-full bg-slate-900 border border-slate-600 px-2 py-1 rounded text-xs font-mono text-white" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 3D Visualization Options -->
+      <div class="space-y-3 border-t border-slate-700/70 pt-4">
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Display Options</label>
+        
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-300">Show Connecting Trajectories</span>
+          <input type="checkbox" id="showConnectors" checked class="h-4 w-4 rounded bg-slate-900 border-slate-600 text-indigo-600 focus:ring-indigo-500" />
+        </div>
+
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-300">Connector Step (Sparsity):</span>
+          <select id="connectorStep" class="bg-slate-900 border border-slate-600 text-xs rounded px-2 py-1 text-slate-200">
+            <option value="4">Dense (every 4th)</option>
+            <option value="8" selected>Medium (every 8th)</option>
+            <option value="15">Sparse (every 15th)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Plane Gap / Height (ΔZ in 3D): <span id="heightVal" class="text-indigo-400 font-mono">1.0</span></label>
+          <input type="range" id="planeHeight" min="0.5" max="3.0" step="0.1" value="1.0" class="w-full accent-indigo-500" />
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <button 
+        id="renderBtn" 
+        class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 font-medium text-sm rounded-lg transition duration-150 shadow-md flex items-center justify-center gap-2"
+      >
+        <span>Re-compute & Plot</span>
+      </button>
+
+      <div class="text-[11px] text-slate-400 leading-relaxed border-t border-slate-700/70 pt-3">
+        💡 <b>Tip:</b> Click and drag the 3D plot to rotate, scroll to zoom, and double-click to reset camera.
+      </div>
+
+    </aside>
+
+    <!-- Plots Column (Right) -->
+    <section class="lg:col-span-8 flex flex-col gap-6">
+      
+      <!-- Plot 1: 3D Mapping on Parallel Planes -->
+      <div class="plot-container p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-sm font-semibold text-slate-200 tracking-wide flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"></span>
+            3D Mapping: Parallel Planes (Domain z=0 → Codomain z=h)
+          </h2>
+          <span class="text-xs text-slate-400">Interactive 3D WebGL</span>
+        </div>
+        <div id="plot3d" style="width: 100%; height: 520px;"></div>
+      </div>
+
+      <!-- Plot 2: 2D Separate Planes (Domain vs Codomain) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <!-- Domain Plane -->
+        <div class="plot-container p-4">
+          <h3 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block"></span>
+            z-plane (Domain: Input Lines)
+          </h3>
+          <div id="plot2dDomain" style="width: 100%; height: 380px;"></div>
+        </div>
+
+        <!-- Codomain Plane -->
+        <div class="plot-container p-4">
+          <h3 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-indigo-400 inline-block"></span>
+            f(z)-plane (Codomain: Mapped Curves)
+          </h3>
+          <div id="plot2dCodomain" style="width: 100%; height: 380px;"></div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <script>
+    // Color palette generator matching matplotlib 'rainbow'
+    function getRainbowColor(t) {
+      // t is [0, 1]
+      const hue = (1 - t) * 280; // purple through blue, cyan, green, yellow to red
+      return `hsl(${hue}, 85%, 60%)`;
+    }
+
+    // Parse user input constants
+    function parseConstants(str) {
+      return str.split(',')
+        .map(v => parseFloat(v.trim()))
+        .filter(v => !isNaN(v));
+    }
+
+    function renderAll() {
+      const errorMsg = document.getElementById('errorMsg');
+      errorMsg.classList.add('hidden');
+
+      const fnStr = document.getElementById('functionInput').value.trim();
+      const xConstants = parseConstants(document.getElementById('xConstantsInput').value);
+      const yMin = parseFloat(document.getElementById('yMin').value);
+      const yMax = parseFloat(document.getElementById('yMax').value);
+      const ySteps = parseInt(document.getElementById('ySteps').value, 10);
+      const showConnectors = document.getElementById('showConnectors').checked;
+      const connectorStep = parseInt(document.getElementById('connectorStep').value, 10);
+      const fzHeight = parseFloat(document.getElementById('planeHeight').value);
+
+      if (xConstants.length === 0) {
+        errorMsg.textContent = "Please enter at least one valid x constant.";
+        errorMsg.classList.remove('hidden');
+        return;
+      }
+
+      // Compile math expression with Math.js
+      let compiledFn;
+      try {
+        compiledFn = math.compile(fnStr);
+        // Test evaluation with a sample point
+        compiledFn.evaluate({ z: math.complex(0, 0) });
+      } catch (err) {
+        errorMsg.textContent = "Invalid formula: " + err.message;
+        errorMsg.classList.remove('hidden');
+        return;
+      }
+
+      // Generate y values linspace
+      const yVals = [];
+      for (let i = 0; i < ySteps; i++) {
+        yVals.push(yMin + (yMax - yMin) * (i / (ySteps - 1)));
+      }
+
+      // Prepare traces for 3D & 2D plots
+      const traces3D = [];
+      const traces2DDomain = [];
+      const traces2DCodomain = [];
+
+      xConstants.forEach((xVal, idx) => {
+        const normColorIndex = xConstants.length > 1 ? idx / (xConstants.length - 1) : 0.5;
+        const color = getRainbowColor(normColorIndex);
+
+        const domainX = [];
+        const domainY = [];
+        const domainZ = [];
+
+        const codomainX = [];
+        const codomainY = [];
+        const codomainZ = [];
+
+        yVals.forEach(yVal => {
+          const zComplex = math.complex(xVal, yVal);
+          let wComplex;
+          try {
+            const res = compiledFn.evaluate({ z: zComplex });
+            // Handle number or complex result
+            if (typeof res === 'number') {
+              wComplex = math.complex(res, 0);
+            } else if (res && typeof res.re === 'number' && typeof res.im === 'number') {
+              wComplex = res;
+            } else {
+              wComplex = math.complex(NaN, NaN);
+            }
+          } catch (e) {
+            wComplex = math.complex(NaN, NaN);
+          }
+
+          // Skip singularities or infinities
+          if (!isFinite(wComplex.re) || !isFinite(wComplex.im)) {
+            wComplex = math.complex(null, null);
+          }
+
+          domainX.push(xVal);
+          domainY.push(yVal);
+          domainZ.push(0);
+
+          codomainX.push(wComplex.re);
+          codomainY.push(wComplex.im);
+          codomainZ.push(fzHeight);
+        });
+
+        // 1. Trace for Domain line in 3D
+        traces3D.push({
+          type: 'scatter3d',
+          mode: 'lines',
+          x: domainX,
+          y: domainY,
+          z: domainZ,
+          line: { color: color, width: 4 },
+          name: `x = ${xVal} (Domain)`,
+          showlegend: true
+        });
+
+        // 2. Trace for Codomain curve in 3D
+        traces3D.push({
+          type: 'scatter3d',
+          mode: 'lines',
+          x: codomainX,
+          y: codomainY,
+          z: codomainZ,
+          line: { color: color, width: 4 },
+          name: `f(x=${xVal})`,
+          showlegend: false
+        });
+
+        // 3. Connectors between Domain and Codomain
+        if (showConnectors) {
+          const connX = [];
+          const connY = [];
+          const connZ = [];
+
+          for (let i = 0; i < domainX.length; i += connectorStep) {
+            if (codomainX[i] !== null && !isNaN(codomainX[i])) {
+              connX.push(domainX[i], codomainX[i], null);
+              connY.push(domainY[i], codomainY[i], null);
+              connZ.push(domainZ[i], codomainZ[i], null);
+            }
+          }
+
+          if (connX.length > 0) {
+            traces3D.push({
+              type: 'scatter3d',
+              mode: 'lines',
+              x: connX,
+              y: connY,
+              z: connZ,
+              line: { color: color, width: 1.5, dash: 'dot' },
+              opacity: 0.35,
+              showlegend: false,
+              hoverinfo: 'none'
+            });
+          }
+        }
+
+        // 4. Trace for 2D Domain Plot
+        traces2DDomain.push({
+          type: 'scatter',
+          mode: 'lines',
+          x: domainX,
+          y: domainY,
+          line: { color: color, width: 2.5 },
+          name: `x = ${xVal}`
+        });
+
+        // 5. Trace for 2D Codomain Plot
+        traces2DCodomain.push({
+          type: 'scatter',
+          mode: 'lines',
+          x: codomainX,
+          y: codomainY,
+          line: { color: color, width: 2.5 },
+          name: `Mapped x = ${xVal}`
+        });
+      });
+
+      // Dark layout configuration
+      const common2DLayout = {
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: '#0f172a',
+        font: { color: '#94a3b8' },
+        margin: { l: 45, r: 20, t: 25, b: 40 },
+        xaxis: {
+          title: 'Real Axis (Re)',
+          gridcolor: '#334155',
+          zerolinecolor: '#64748b',
+          scaleanchor: 'y',
+          scaleratio: 1
+        },
+        yaxis: {
+          title: 'Imag Axis (Im)',
+          gridcolor: '#334155',
+          zerolinecolor: '#64748b'
+        },
+        legend: { orientation: 'h', y: -0.2 }
+      };
+
+      const layout3D = {
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        font: { color: '#cbd5e1' },
+        margin: { l: 0, r: 0, t: 20, b: 0 },
+        scene: {
+          xaxis: { title: 'Re', backgroundcolor: '#1e293b', gridcolor: '#334155', showbackground: true },
+          yaxis: { title: 'Im', backgroundcolor: '#1e293b', gridcolor: '#334155', showbackground: true },
+          zaxis: {
+            title: 'Planes',
+            tickvals: [0, fzHeight],
+            ticktext: ['z-plane', 'f(z)-plane'],
+            backgroundcolor: '#0f172a',
+            gridcolor: '#334155',
+            showbackground: true
+          },
+          camera: {
+            eye: { x: 1.4, y: -1.7, z: 0.9 }
+          }
+        },
+        legend: {
+          x: 0,
+          y: 1,
+          font: { color: '#94a3b8' },
+          bgcolor: 'rgba(15,23,42,0.6)'
+        }
+      };
+
+      Plotly.react('plot3d', traces3D, layout3D, { responsive: true, displaylogo: false });
+      Plotly.react('plot2dDomain', traces2DDomain, { ...common2DLayout, title: 'z-plane' }, { responsive: true, displaylogo: false });
+      Plotly.react('plot2dCodomain', traces2DCodomain, { ...common2DLayout, title: 'f(z)-plane' }, { responsive: true, displaylogo: false });
+    }
+
+    // Preset button event listeners
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.getElementById('functionInput').value = e.target.getAttribute('data-fn');
+        renderAll();
+      });
+    });
+
+    // Slider listener
+    document.getElementById('planeHeight').addEventListener('input', (e) => {
+      document.getElementById('heightVal').textContent = parseFloat(e.target.value).toFixed(1);
+    });
+
+    document.getElementById('renderBtn').addEventListener('click', renderAll);
+    document.getElementById('functionInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') renderAll();
+    });
+
+    // Initial render
+    window.addEventListener('load', renderAll);
+  </script>
+</body>
+</html>
