@@ -1,333 +1,486 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Complex Mapping Visualizer (3D & 2D)</title>
-  
-  <!-- Math.js for complex function evaluation -->
-  <script src="https://cdn.jsdelivr.net/npm/mathjs@12.4.1/lib/browser/math.js"></script>
-  <!-- Plotly.js for high-performance 3D & 2D scientific plotting -->
-  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
-  <!-- Tailwind CSS CDN for styling -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complex Function Mapping Visualizer</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-
+  <!-- Math.js for complex number evaluation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.1/math.min.js"></script>
+  <!-- Plotly.js for high-fidelity 3D and 2D scientific plotting -->
+  <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    body {
-      background-color: #0f172a;
-      color: #f8fafc;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    /* Custom scrollbars and styling */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
     }
-    .plot-container {
-      position: relative;
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 0.75rem;
-      overflow: hidden;
+    ::-webkit-scrollbar-track {
+      background: #111827;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4b5563;
+    }
+    .plot-container .plotly .modebar {
+      top: 10px !important;
+      right: 10px !important;
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased select-none">
 
-  <!-- Header -->
-  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur px-6 py-4 sticky top-0 z-30 flex flex-wrap items-center justify-between gap-4">
-    <div>
-      <h1 class="text-xl font-bold text-white flex items-center gap-2">
-        <span class="text-indigo-400">ƒ(z)</span> Complex Function Visualizer
-      </h1>
-      <p class="text-xs text-slate-400">Interactive parallel-planes 3D mapping & 2D codomain analysis</p>
-    </div>
-    <div class="flex items-center gap-2 text-xs">
-      <span class="px-2.5 py-1 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-mono">z = x + iy</span>
+  <!-- Top Navigation Bar -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <i data-lucide="compass" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight tracking-wide bg-gradient-to-r from-cyan-300 via-sky-200 to-indigo-300 bg-clip-text text-transparent">
+            Complex Map 3D
+          </h1>
+          <p class="text-xs text-slate-400">Parallel Planes & Conformal Geometry Explorer</p>
+        </div>
+      </div>
+
+      <!-- Quick Action Toolbar -->
+      <div class="flex items-center gap-2">
+        <button id="btn-animate" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95">
+          <i data-lucide="play" id="animate-icon" class="w-3.5 h-3.5"></i>
+          <span id="animate-text">Morph z &rarr; f(z)</span>
+        </button>
+        <button id="btn-reset-view" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 border border-slate-700 flex items-center gap-1.5 transition">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset Camera
+        </button>
+      </div>
     </div>
   </header>
 
-  <!-- Main Container -->
-  <main class="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-    <!-- Controls Panel (Left / Sidebar) -->
-    <aside class="lg:col-span-4 bg-slate-800/80 border border-slate-700/70 rounded-xl p-5 shadow-xl flex flex-col gap-5 h-fit">
+  <!-- Main Grid Layout -->
+  <main class="max-w-7xl mx-auto w-full p-4 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5">
+    
+    <!-- Left Column: Controls Sidebar (lg:col-span-4) -->
+    <aside class="lg:col-span-4 space-y-4">
       
-      <!-- Preset Buttons -->
-      <div>
-        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Preset Functions</label>
-        <div class="grid grid-cols-3 gap-1.5 text-xs">
-          <button class="preset-btn px-2 py-1.5 bg-slate-700/60 hover:bg-indigo-600 rounded text-slate-200 transition font-mono" data-fn="exp(z)">exp(z)</button>
-          <button class="preset-btn px-2 py-1.5 bg-slate-700/60 hover:bg-indigo-600 rounded text-slate-200 transition font-mono" data-fn="z^2">z^2</button>
-          <button class="preset-btn px-2 py-1.5 bg-slate-700/60 hover:bg-indigo-600 rounded text-slate-200 transition font-mono" data-fn="sin(z)">sin(z)</button>
-          <button class="preset-btn px-2 py-1.5 bg-slate-700/60 hover:bg-indigo-600 rounded text-slate-200 transition font-mono" data-fn="1/z">1 / z</button>
-          <button class="preset-btn px-2 py-1.5 bg-slate-700/60 hover:bg-indigo-600 rounded text-slate-200 transition font-mono" data-fn="z^3 - z">z^3 - z</button>
-          <button class="preset-btn px-2 py-1.5 bg-slate-700/60 hover:bg-indigo-600 rounded text-slate-200 transition font-mono" data-fn="cosh(z)">cosh(z)</button>
+      <!-- Function Configuration Card -->
+      <div class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800/80 shadow-xl space-y-4">
+        <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+          <span class="text-sm font-semibold flex items-center gap-2 text-cyan-400">
+            <i data-lucide="variable" class="w-4 h-4"></i> Function Definition
+          </span>
+          <span id="calc-status" class="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">Ready</span>
         </div>
-      </div>
 
-      <!-- Function Expression Input -->
-      <div>
-        <label for="functionInput" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-          Function f(z)
-        </label>
-        <div class="relative">
-          <input 
-            type="text" 
-            id="functionInput" 
-            value="exp(z)"
-            class="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            placeholder="e.g. exp(z), z^2, sin(z)"
-          />
-        </div>
-        <p id="errorMsg" class="text-rose-400 text-xs mt-1 hidden"></p>
-      </div>
-
-      <!-- Domain Configuration -->
-      <div class="space-y-3 border-t border-slate-700/70 pt-4">
-        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Domain Lines Configuration</label>
-        
         <div>
-          <label class="block text-xs text-slate-300 mb-1">Constant x values (comma-separated):</label>
-          <input 
-            type="text" 
-            id="xConstantsInput" 
-            value="-2, -1, -0.5, 0, 0.5, 1, 2"
-            class="w-full px-3 py-1.5 bg-slate-900 border border-slate-600 rounded text-xs font-mono text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
+          <label class="block text-xs font-medium text-slate-300 mb-1.5">Expression <code class="text-cyan-400 font-mono text-xs">f(z)</code></label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 font-serif italic text-sm">f(z) =</span>
+            <input type="text" id="input-func" value="exp(z)" class="w-full pl-14 pr-3 py-2 bg-slate-950 border border-slate-700 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 rounded-xl text-sm font-mono text-cyan-300 transition outline-none" placeholder="e.g. exp(z), z^2, sin(z)">
+          </div>
+          <div id="func-error" class="hidden mt-1 text-xs text-rose-400 bg-rose-950/40 border border-rose-800/50 rounded-lg p-2 font-mono"></div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <!-- Presets -->
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1.5">Presets</label>
+          <div class="grid grid-cols-4 gap-1.5 text-xs font-mono">
+            <button class="preset-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/60 text-slate-300 transition" data-func="exp(z)">exp(z)</button>
+            <button class="preset-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/60 text-slate-300 transition" data-func="z^2">z²</button>
+            <button class="preset-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/60 text-slate-300 transition" data-func="sin(z)">sin(z)</button>
+            <button class="preset-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/60 text-slate-300 transition" data-func="cos(z)">cos(z)</button>
+            <button class="preset-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/60 text-slate-300 transition" data-func="1/z">1 / z</button>
+            <button class="preset-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/60 text-slate-300 transition" data-func="z^3 - z">z³ - z</button>
+            <button class="preset-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/60 text-slate-300 transition" data-func="sqrt(z)">√z</button>
+            <button class="preset-btn px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/60 text-slate-300 transition" data-func="exp(i*z)">e^(i·z)</button>
+          </div>
+        </div>
+
+        <!-- Grid Mode Selector -->
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1.5">Domain Grid Mode</label>
+          <div class="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+            <button id="mode-vertical" class="mode-tab-btn py-1.5 text-xs rounded-lg font-medium bg-indigo-600 text-white transition">Vertical (x)</button>
+            <button id="mode-horizontal" class="mode-tab-btn py-1.5 text-xs rounded-lg font-medium text-slate-400 hover:text-white transition">Horiz (y)</button>
+            <button id="mode-both" class="mode-tab-btn py-1.5 text-xs rounded-lg font-medium text-slate-400 hover:text-white transition">Both (Mesh)</button>
+          </div>
+        </div>
+
+        <!-- Domain Parameter Inputs -->
+        <div class="space-y-3 pt-1">
           <div>
-            <label class="block text-xs text-slate-300 mb-1">y range [min, max]:</label>
-            <div class="flex items-center gap-1">
-              <input type="number" id="yMin" value="-2" step="0.5" class="w-full bg-slate-900 border border-slate-600 px-2 py-1 rounded text-xs font-mono text-white" />
-              <span class="text-slate-500 text-xs">to</span>
-              <input type="number" id="yMax" value="2" step="0.5" class="w-full bg-slate-900 border border-slate-600 px-2 py-1 rounded text-xs font-mono text-white" />
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300 font-medium">Constant x lines (Re values)</span>
+              <span class="text-slate-400 font-mono text-[11px]" id="x-count-lbl">7 lines</span>
+            </div>
+            <input type="text" id="input-x-constants" value="-2, -1, -0.5, 0, 0.5, 1, 2" class="w-full px-3 py-1.5 bg-slate-950 border border-slate-700 focus:border-cyan-500 rounded-xl text-xs font-mono text-slate-200 outline-none">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">y range (min, max)</label>
+              <div class="flex items-center gap-1.5">
+                <input type="number" step="0.5" id="input-y-min" value="-2.0" class="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-mono text-center outline-none">
+                <span class="text-slate-500 text-xs">to</span>
+                <input type="number" step="0.5" id="input-y-max" value="2.0" class="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-xs font-mono text-center outline-none">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Samples / line (<span id="samples-val">45</span>)</label>
+              <input type="range" id="input-samples" min="15" max="100" value="45" class="w-full accent-cyan-500 mt-2">
             </div>
           </div>
-          <div>
-            <label class="block text-xs text-slate-300 mb-1">Points per line:</label>
-            <input type="number" id="ySteps" value="60" min="10" max="250" class="w-full bg-slate-900 border border-slate-600 px-2 py-1 rounded text-xs font-mono text-white" />
+        </div>
+      </div>
+
+      <!-- 3D Visualization Controls -->
+      <div class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800/80 shadow-xl space-y-3.5">
+        <span class="text-sm font-semibold flex items-center gap-2 text-indigo-400 border-b border-slate-800 pb-2">
+          <i data-lucide="layers" class="w-4 h-4"></i> Mapping Geometry
+        </span>
+
+        <!-- Plane Separation -->
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-300">Plane Separation (Δz)</span>
+            <span id="sep-val" class="text-cyan-400 font-mono">1.50</span>
+          </div>
+          <input type="range" id="input-plane-sep" min="0.5" max="4.0" step="0.1" value="1.5" class="w-full accent-indigo-500">
+        </div>
+
+        <!-- Connecting Lines Sparsity -->
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-300">Connecting Lines (Vectors)</span>
+            <span id="sparsity-val" class="text-cyan-400 font-mono">Every 5 pts</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <input type="checkbox" id="check-connectors" checked class="w-4 h-4 rounded bg-slate-950 border-slate-700 text-indigo-600 accent-indigo-500">
+            <input type="range" id="input-sparsity" min="2" max="15" step="1" value="5" class="w-full accent-indigo-500">
           </div>
         </div>
-      </div>
 
-      <!-- 3D Visualization Options -->
-      <div class="space-y-3 border-t border-slate-700/70 pt-4">
-        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Display Options</label>
-        
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-slate-300">Show Connecting Trajectories</span>
-          <input type="checkbox" id="showConnectors" checked class="h-4 w-4 rounded bg-slate-900 border-slate-600 text-indigo-600 focus:ring-indigo-500" />
-        </div>
-
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-slate-300">Connector Step (Sparsity):</span>
-          <select id="connectorStep" class="bg-slate-900 border border-slate-600 text-xs rounded px-2 py-1 text-slate-200">
-            <option value="4">Dense (every 4th)</option>
-            <option value="8" selected>Medium (every 8th)</option>
-            <option value="15">Sparse (every 15th)</option>
-          </select>
-        </div>
-
+        <!-- Morphing / Interpolation Slider -->
         <div>
-          <label class="block text-xs text-slate-300 mb-1">Plane Gap / Height (ΔZ in 3D): <span id="heightVal" class="text-indigo-400 font-mono">1.0</span></label>
-          <input type="range" id="planeHeight" min="0.5" max="3.0" step="0.1" value="1.0" class="w-full accent-indigo-500" />
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-300 font-medium">Morph parameter <code class="text-indigo-400 font-mono">t</code> (0: z &rarr; 1: f(z))</span>
+            <span id="morph-val" class="text-indigo-300 font-mono font-bold">1.00</span>
+          </div>
+          <input type="range" id="input-morph" min="0" max="1" step="0.02" value="1" class="w-full accent-purple-500">
         </div>
+
+        <!-- Plane Sheets Toggle -->
+        <div class="flex items-center justify-between text-xs pt-1">
+          <span class="text-slate-300">Render Plane Surfaces</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="check-plane-surfaces" checked class="sr-only peer">
+            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+          </label>
+        </div>
+
+        <button id="btn-recompute" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-medium text-xs shadow-lg shadow-indigo-600/20 active:scale-95 transition flex items-center justify-center gap-2">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Update Plots
+        </button>
       </div>
 
-      <!-- Action Button -->
-      <button 
-        id="renderBtn" 
-        class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 font-medium text-sm rounded-lg transition duration-150 shadow-md flex items-center justify-center gap-2"
-      >
-        <span>Re-compute & Plot</span>
-      </button>
-
-      <div class="text-[11px] text-slate-400 leading-relaxed border-t border-slate-700/70 pt-3">
-        💡 <b>Tip:</b> Click and drag the 3D plot to rotate, scroll to zoom, and double-click to reset camera.
+      <!-- Quick Theory / Math Note -->
+      <div class="bg-slate-900/40 rounded-xl p-3 border border-slate-800 text-xs text-slate-400 space-y-1.5">
+        <p class="font-semibold text-slate-300 flex items-center gap-1.5">
+          <i data-lucide="info" class="w-3.5 h-3.5 text-cyan-400"></i> Mathematical Insight
+        </p>
+        <p class="leading-relaxed">
+          For analytic complex functions, orthogonal grid lines in the domain $z = x + iy$ map to orthogonal trajectories in $w = f(z)$ (conformal mapping), preserving infinitesimal angles and local geometry.
+        </p>
       </div>
-
     </aside>
 
-    <!-- Plots Column (Right) -->
-    <section class="lg:col-span-8 flex flex-col gap-6">
+    <!-- Right Column: Visualizations (lg:col-span-8) -->
+    <div class="lg:col-span-8 flex flex-col gap-4">
       
-      <!-- Plot 1: 3D Mapping on Parallel Planes -->
-      <div class="plot-container p-4">
-        <div class="flex items-center justify-between mb-2">
-          <h2 class="text-sm font-semibold text-slate-200 tracking-wide flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"></span>
-            3D Mapping: Parallel Planes (Domain z=0 → Codomain z=h)
-          </h2>
-          <span class="text-xs text-slate-400">Interactive 3D WebGL</span>
+      <!-- Plot 1: 3D Visualization of Parallel Planes -->
+      <div class="bg-slate-900/90 rounded-2xl border border-slate-800/80 shadow-2xl p-3.5 flex flex-col">
+        <div class="flex items-center justify-between pb-2 mb-1 border-b border-slate-800/60 px-1">
+          <div class="flex items-center gap-2">
+            <div class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></div>
+            <h2 class="text-sm font-semibold text-slate-200">3D Parallel Planes Mapping</h2>
+            <span class="text-[11px] text-slate-500 font-mono hidden sm:inline">(Domain z=0 & Codomain z=h)</span>
+          </div>
+          <span class="text-xs text-slate-400 font-mono">Orbit: Left Click | Pan: Right Click</span>
         </div>
-        <div id="plot3d" style="width: 100%; height: 520px;"></div>
+        <div id="plot-3d" class="w-full h-[430px] rounded-xl overflow-hidden bg-slate-950"></div>
       </div>
 
-      <!-- Plot 2: 2D Separate Planes (Domain vs Codomain) -->
+      <!-- Plot 2 & Plot 3: 2D Domain and Codomain Side-by-Side -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         
-        <!-- Domain Plane -->
-        <div class="plot-container p-4">
-          <h3 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block"></span>
-            z-plane (Domain: Input Lines)
-          </h3>
-          <div id="plot2dDomain" style="width: 100%; height: 380px;"></div>
+        <!-- Plot 2: Domain 2D Plane -->
+        <div class="bg-slate-900/90 rounded-2xl border border-slate-800/80 shadow-xl p-3 flex flex-col">
+          <div class="flex items-center justify-between pb-1.5 mb-1 border-b border-slate-800/60 px-1">
+            <h3 class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+              Domain z-plane: (x, y)
+            </h3>
+            <span class="text-[10px] text-slate-500 font-mono">Re(z) vs Im(z)</span>
+          </div>
+          <div id="plot-2d-domain" class="w-full h-[310px] rounded-xl overflow-hidden bg-slate-950"></div>
         </div>
 
-        <!-- Codomain Plane -->
-        <div class="plot-container p-4">
-          <h3 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-indigo-400 inline-block"></span>
-            f(z)-plane (Codomain: Mapped Curves)
-          </h3>
-          <div id="plot2dCodomain" style="width: 100%; height: 380px;"></div>
+        <!-- Plot 3: Codomain 2D Plane -->
+        <div class="bg-slate-900/90 rounded-2xl border border-slate-800/80 shadow-xl p-3 flex flex-col">
+          <div class="flex items-center justify-between pb-1.5 mb-1 border-b border-slate-800/60 px-1">
+            <h3 class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+              Codomain f(z)-plane: (u, v)
+            </h3>
+            <span class="text-[10px] text-slate-500 font-mono">Re(f(z)) vs Im(f(z))</span>
+          </div>
+          <div id="plot-2d-codomain" class="w-full h-[310px] rounded-xl overflow-hidden bg-slate-950"></div>
         </div>
-
       </div>
 
-    </section>
+    </div>
 
   </main>
 
+  <!-- Interactive JavaScript Engine -->
   <script>
-    // Color palette generator matching matplotlib 'rainbow'
-    function getRainbowColor(t) {
-      // t is [0, 1]
-      const hue = (1 - t) * 280; // purple through blue, cyan, green, yellow to red
-      return `hsl(${hue}, 85%, 60%)`;
-    }
+    // State management
+    const state = {
+      expression: 'exp(z)',
+      compiledFunc: null,
+      gridMode: 'vertical', // 'vertical', 'horizontal', 'both'
+      xConstants: [-2, -1, -0.5, 0, 0.5, 1, 2],
+      yMin: -2.0,
+      yMax: 2.0,
+      samples: 45,
+      planeSep: 1.5,
+      showConnectors: true,
+      sparsity: 5,
+      morphT: 1.0,
+      showSurfaces: true,
+      isAnimating: false,
+      animationFrameId: null
+    };
 
-    // Parse user input constants
-    function parseConstants(str) {
-      return str.split(',')
-        .map(v => parseFloat(v.trim()))
-        .filter(v => !isNaN(v));
-    }
-
-    function renderAll() {
-      const errorMsg = document.getElementById('errorMsg');
-      errorMsg.classList.add('hidden');
-
-      const fnStr = document.getElementById('functionInput').value.trim();
-      const xConstants = parseConstants(document.getElementById('xConstantsInput').value);
-      const yMin = parseFloat(document.getElementById('yMin').value);
-      const yMax = parseFloat(document.getElementById('yMax').value);
-      const ySteps = parseInt(document.getElementById('ySteps').value, 10);
-      const showConnectors = document.getElementById('showConnectors').checked;
-      const connectorStep = parseInt(document.getElementById('connectorStep').value, 10);
-      const fzHeight = parseFloat(document.getElementById('planeHeight').value);
-
-      if (xConstants.length === 0) {
-        errorMsg.textContent = "Please enter at least one valid x constant.";
-        errorMsg.classList.remove('hidden');
-        return;
+    // Color Palette generator for curves (vibrant rainbow / viridis style)
+    function getPalette(count) {
+      const colors = [];
+      for (let i = 0; i < count; i++) {
+        const hue = (i / Math.max(1, count - 1)) * 300; // red to violet
+        colors.push(`hsl(${hue}, 85%, 60%)`);
       }
+      return colors;
+    }
 
-      // Compile math expression with Math.js
-      let compiledFn;
+    // Compile function safely using math.js
+    function compileCurrentFunction() {
+      const errBox = document.getElementById('func-error');
+      const statusBadge = document.getElementById('calc-status');
       try {
-        compiledFn = math.compile(fnStr);
-        // Test evaluation with a sample point
-        compiledFn.evaluate({ z: math.complex(0, 0) });
+        const parsed = math.compile(state.expression);
+        // Test evaluation with a sample complex number
+        const testZ = math.complex(0.5, 0.5);
+        const testRes = parsed.evaluate({ z: testZ, i: math.complex(0, 1) });
+        if (typeof testRes !== 'number' && !(testRes && testRes.isComplex)) {
+          throw new Error("Function must yield numeric or complex values.");
+        }
+        state.compiledFunc = parsed;
+        errBox.classList.add('hidden');
+        errBox.textContent = '';
+        statusBadge.textContent = 'Ready';
+        statusBadge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono';
+        return true;
       } catch (err) {
-        errorMsg.textContent = "Invalid formula: " + err.message;
-        errorMsg.classList.remove('hidden');
-        return;
+        state.compiledFunc = null;
+        errBox.textContent = `Error in expression: ${err.message}`;
+        errBox.classList.remove('hidden');
+        statusBadge.textContent = 'Syntax Error';
+        statusBadge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-mono';
+        return false;
+      }
+    }
+
+    // Evaluate complex function with singularity protection
+    function evaluateSafe(zVal) {
+      if (!state.compiledFunc) return null;
+      try {
+        const res = state.compiledFunc.evaluate({ z: zVal, i: math.complex(0, 1) });
+        const c = math.complex(res);
+        if (!isFinite(c.re) || !isFinite(c.im) || isNaN(c.re) || isNaN(c.im)) return null;
+        // Clamp huge values to avoid WebGL float overflows
+        if (Math.hypot(c.re, c.im) > 1000) return null;
+        return c;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Generate line data based on settings
+    function computeMappingData() {
+      const lineData = [];
+
+      // Helper to generate a line
+      const makeLine = (pointGenerator, label, isVertical) => {
+        const domainPoints = [];
+        const codomainPoints = [];
+
+        for (let i = 0; i < state.samples; i++) {
+          const frac = i / (state.samples - 1);
+          const z = pointGenerator(frac);
+          const w = evaluateSafe(z);
+          domainPoints.push(z);
+          codomainPoints.push(w); // could be null if undefined
+        }
+
+        return {
+          label: label,
+          isVertical: isVertical,
+          domain: domainPoints,
+          codomain: codomainPoints
+        };
+      };
+
+      // 1. Vertical lines: x constant, y varies
+      if (state.gridMode === 'vertical' || state.gridMode === 'both') {
+        state.xConstants.forEach((xVal) => {
+          lineData.push(makeLine(
+            (frac) => {
+              const y = state.yMin + frac * (state.yMax - state.yMin);
+              return math.complex(xVal, y);
+            },
+            `x = ${xVal}`,
+            true
+          ));
+        });
       }
 
-      // Generate y values linspace
-      const yVals = [];
-      for (let i = 0; i < ySteps; i++) {
-        yVals.push(yMin + (yMax - yMin) * (i / (ySteps - 1)));
+      // 2. Horizontal lines: y constant, x varies
+      if (state.gridMode === 'horizontal' || state.gridMode === 'both') {
+        // use symmetric spacing based on x-bounds
+        const xMin = Math.min(...state.xConstants, -2);
+        const xMax = Math.max(...state.xConstants, 2);
+        const yLevels = [-1.5, -1.0, -0.5, 0, 0.5, 1.0, 1.5];
+        
+        yLevels.forEach((yVal) => {
+          lineData.push(makeLine(
+            (frac) => {
+              const x = xMin + frac * (xMax - xMin);
+              return math.complex(x, yVal);
+            },
+            `y = ${yVal}`,
+            false
+          ));
+        });
       }
 
-      // Prepare traces for 3D & 2D plots
-      const traces3D = [];
-      const traces2DDomain = [];
-      const traces2DCodomain = [];
+      return lineData;
+    }
 
-      xConstants.forEach((xVal, idx) => {
-        const normColorIndex = xConstants.length > 1 ? idx / (xConstants.length - 1) : 0.5;
-        const color = getRainbowColor(normColorIndex);
+    // Render 3D Parallel Planes visualization
+    function render3D(lineData, colors) {
+      const traces = [];
+      const zPlaneH = 0.0;
+      const fzPlaneH = state.planeSep;
+      const t = state.morphT;
 
-        const domainX = [];
-        const domainY = [];
-        const domainZ = [];
+      let minX = -2, maxX = 2, minY = -2, maxY = 2;
 
-        const codomainX = [];
-        const codomainY = [];
-        const codomainZ = [];
+      lineData.forEach((line, idx) => {
+        const color = colors[idx % colors.length];
 
-        yVals.forEach(yVal => {
-          const zComplex = math.complex(xVal, yVal);
-          let wComplex;
-          try {
-            const res = compiledFn.evaluate({ z: zComplex });
-            // Handle number or complex result
-            if (typeof res === 'number') {
-              wComplex = math.complex(res, 0);
-            } else if (res && typeof res.re === 'number' && typeof res.im === 'number') {
-              wComplex = res;
-            } else {
-              wComplex = math.complex(NaN, NaN);
-            }
-          } catch (e) {
-            wComplex = math.complex(NaN, NaN);
+        // Domain points
+        const domX = line.domain.map(p => p.re);
+        const domY = line.domain.map(p => p.im);
+        const domZ = new Array(domX.length).fill(zPlaneH);
+
+        // Track bounding box for domain
+        domX.forEach(v => { if (isFinite(v)) { minX = Math.min(minX, v); maxX = Math.max(maxX, v); } });
+        domY.forEach(v => { if (isFinite(v)) { minY = Math.min(minY, v); maxY = Math.max(maxY, v); } });
+
+        // Codomain points (with morph support)
+        const codomX = [];
+        const codomY = [];
+        const codomZ = [];
+
+        for (let i = 0; i < line.domain.length; i++) {
+          const z = line.domain[i];
+          const w = line.codomain[i];
+
+          if (w !== null) {
+            // Linear interpolation based on morph slider t: 0 -> 1
+            const curX = z.re * (1 - t) + w.re * t;
+            const curY = z.im * (1 - t) + w.im * t;
+            const curZ = zPlaneH * (1 - t) + fzPlaneH * t;
+
+            codomX.push(curX);
+            codomY.push(curY);
+            codomZ.push(curZ);
+
+            if (isFinite(w.re)) { minX = Math.min(minX, w.re); maxX = Math.max(maxX, w.re); }
+            if (isFinite(w.im)) { minY = Math.min(minY, w.im); maxY = Math.max(maxY, w.im); }
+          } else {
+            // Null creates breaks in Plotly lines for singularities
+            codomX.push(null);
+            codomY.push(null);
+            codomZ.push(null);
           }
+        }
 
-          // Skip singularities or infinities
-          if (!isFinite(wComplex.re) || !isFinite(wComplex.im)) {
-            wComplex = math.complex(null, null);
-          }
-
-          domainX.push(xVal);
-          domainY.push(yVal);
-          domainZ.push(0);
-
-          codomainX.push(wComplex.re);
-          codomainY.push(wComplex.im);
-          codomainZ.push(fzHeight);
-        });
-
-        // 1. Trace for Domain line in 3D
-        traces3D.push({
+        // Trace for Domain line (at z=0)
+        traces.push({
           type: 'scatter3d',
           mode: 'lines',
-          x: domainX,
-          y: domainY,
-          z: domainZ,
-          line: { color: color, width: 4 },
-          name: `x = ${xVal} (Domain)`,
-          showlegend: true
-        });
-
-        // 2. Trace for Codomain curve in 3D
-        traces3D.push({
-          type: 'scatter3d',
-          mode: 'lines',
-          x: codomainX,
-          y: codomainY,
-          z: codomainZ,
-          line: { color: color, width: 4 },
-          name: `f(x=${xVal})`,
+          x: domX,
+          y: domY,
+          z: domZ,
+          line: { color: color, width: 4.5 },
+          name: `${line.label} (Domain)`,
+          hoverinfo: 'name+x+y',
           showlegend: false
         });
 
-        // 3. Connectors between Domain and Codomain
-        if (showConnectors) {
+        // Trace for Codomain curve (at z=fzPlaneH or interpolated)
+        traces.push({
+          type: 'scatter3d',
+          mode: 'lines',
+          x: codomX,
+          y: codomY,
+          z: codomZ,
+          line: { color: color, width: 4.5 },
+          name: `f(${line.label})`,
+          hoverinfo: 'name+x+y',
+          showlegend: false
+        });
+
+        // Connecting dashed lines
+        if (state.showConnectors) {
           const connX = [];
           const connY = [];
           const connZ = [];
 
-          for (let i = 0; i < domainX.length; i += connectorStep) {
-            if (codomainX[i] !== null && !isNaN(codomainX[i])) {
-              connX.push(domainX[i], codomainX[i], null);
-              connY.push(domainY[i], codomainY[i], null);
-              connZ.push(domainZ[i], codomainZ[i], null);
+          for (let i = 0; i < line.domain.length; i += state.sparsity) {
+            const z = line.domain[i];
+            const w = line.codomain[i];
+            if (w !== null) {
+              const targetX = z.re * (1 - t) + w.re * t;
+              const targetY = z.im * (1 - t) + w.im * t;
+              const targetZ = zPlaneH * (1 - t) + fzPlaneH * t;
+
+              connX.push(z.re, targetX, null);
+              connY.push(z.im, targetY, null);
+              connZ.push(zPlaneH, targetZ, null);
             }
           }
 
           if (connX.length > 0) {
-            traces3D.push({
+            traces.push({
               type: 'scatter3d',
               mode: 'lines',
               x: connX,
@@ -335,107 +488,397 @@
               z: connZ,
               line: { color: color, width: 1.5, dash: 'dot' },
               opacity: 0.35,
-              showlegend: false,
-              hoverinfo: 'none'
+              hoverinfo: 'none',
+              showlegend: false
             });
           }
         }
+      });
 
-        // 4. Trace for 2D Domain Plot
-        traces2DDomain.push({
-          type: 'scatter',
-          mode: 'lines',
-          x: domainX,
-          y: domainY,
-          line: { color: color, width: 2.5 },
-          name: `x = ${xVal}`
-        });
+      // Semi-transparent parallel plane surfaces
+      if (state.showSurfaces) {
+        const bound = Math.max(Math.abs(minX), Math.abs(maxX), Math.abs(minY), Math.abs(maxY), 3);
+        const marginBound = Math.min(bound * 1.05, 12);
 
-        // 5. Trace for 2D Codomain Plot
-        traces2DCodomain.push({
-          type: 'scatter',
+        // Helper to add a flat transparent mesh sheet
+        const addPlaneSheet = (zLevel, name, colorStr) => {
+          traces.push({
+            type: 'mesh3d',
+            x: [-marginBound, marginBound, marginBound, -marginBound],
+            y: [-marginBound, -marginBound, marginBound, marginBound],
+            z: [zLevel, zLevel, zLevel, zLevel],
+            i: [0, 0],
+            j: [1, 2],
+            k: [2, 3],
+            opacity: 0.12,
+            color: colorStr,
+            hoverinfo: 'none',
+            showlegend: false
+          });
+        };
+
+        addPlaneSheet(zPlaneH, 'z-plane', '#38bdf8');
+        addPlaneSheet(fzPlaneH, 'f(z)-plane', '#a855f7');
+      }
+
+      const layout = {
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        margin: { l: 0, r: 0, t: 10, b: 10 },
+        showlegend: false,
+        scene: {
+          aspectmode: 'manual',
+          aspectratio: { x: 1.3, y: 1.3, z: 0.9 },
+          xaxis: {
+            title: 'Real (Re)',
+            color: '#94a3b8',
+            gridcolor: '#1e293b',
+            zerolinecolor: '#475569',
+            backgroundcolor: 'transparent'
+          },
+          yaxis: {
+            title: 'Imag (Im)',
+            color: '#94a3b8',
+            gridcolor: '#1e293b',
+            zerolinecolor: '#475569',
+            backgroundcolor: 'transparent'
+          },
+          zaxis: {
+            title: 'Parallel Planes',
+            color: '#94a3b8',
+            gridcolor: '#1e293b',
+            zerolinecolor: '#475569',
+            tickvals: [zPlaneH, fzPlaneH],
+            ticktext: ['z-plane (0)', `f(z)-plane (${fzPlaneH.toFixed(1)})`],
+            backgroundcolor: 'transparent'
+          },
+          camera: {
+            eye: { x: 1.6, y: -1.7, z: 1.1 }
+          }
+        }
+      };
+
+      const config = {
+        responsive: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ['resetCameraLastSave3d']
+      };
+
+      Plotly.react('plot-3d', traces, layout, config);
+    }
+
+    // Render 2D Domain plane
+    function render2DDomain(lineData, colors) {
+      const traces = [];
+
+      lineData.forEach((line, idx) => {
+        const color = colors[idx % colors.length];
+        const domX = line.domain.map(p => p.re);
+        const domY = line.domain.map(p => p.im);
+
+        traces.push({
+          x: domX,
+          y: domY,
           mode: 'lines',
-          x: codomainX,
-          y: codomainY,
           line: { color: color, width: 2.5 },
-          name: `Mapped x = ${xVal}`
+          name: line.label,
+          hovertemplate: `z = %{x:.2f} + %{y:.2f}i<extra>${line.label}</extra>`
         });
       });
 
-      // Dark layout configuration
-      const common2DLayout = {
+      const layout = {
         paper_bgcolor: 'transparent',
-        plot_bgcolor: '#0f172a',
-        font: { color: '#94a3b8' },
-        margin: { l: 45, r: 20, t: 25, b: 40 },
+        plot_bgcolor: '#030712',
+        margin: { l: 45, r: 20, t: 15, b: 40 },
+        showlegend: false,
         xaxis: {
-          title: 'Real Axis (Re)',
-          gridcolor: '#334155',
+          title: { text: 'Re(z)', font: { size: 11, color: '#94a3b8' } },
+          color: '#94a3b8',
+          gridcolor: '#1f2937',
           zerolinecolor: '#64748b',
           scaleanchor: 'y',
           scaleratio: 1
         },
         yaxis: {
-          title: 'Imag Axis (Im)',
-          gridcolor: '#334155',
+          title: { text: 'Im(z)', font: { size: 11, color: '#94a3b8' } },
+          color: '#94a3b8',
+          gridcolor: '#1f2937',
           zerolinecolor: '#64748b'
-        },
-        legend: { orientation: 'h', y: -0.2 }
-      };
-
-      const layout3D = {
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        font: { color: '#cbd5e1' },
-        margin: { l: 0, r: 0, t: 20, b: 0 },
-        scene: {
-          xaxis: { title: 'Re', backgroundcolor: '#1e293b', gridcolor: '#334155', showbackground: true },
-          yaxis: { title: 'Im', backgroundcolor: '#1e293b', gridcolor: '#334155', showbackground: true },
-          zaxis: {
-            title: 'Planes',
-            tickvals: [0, fzHeight],
-            ticktext: ['z-plane', 'f(z)-plane'],
-            backgroundcolor: '#0f172a',
-            gridcolor: '#334155',
-            showbackground: true
-          },
-          camera: {
-            eye: { x: 1.4, y: -1.7, z: 0.9 }
-          }
-        },
-        legend: {
-          x: 0,
-          y: 1,
-          font: { color: '#94a3b8' },
-          bgcolor: 'rgba(15,23,42,0.6)'
         }
       };
 
-      Plotly.react('plot3d', traces3D, layout3D, { responsive: true, displaylogo: false });
-      Plotly.react('plot2dDomain', traces2DDomain, { ...common2DLayout, title: 'z-plane' }, { responsive: true, displaylogo: false });
-      Plotly.react('plot2dCodomain', traces2DCodomain, { ...common2DLayout, title: 'f(z)-plane' }, { responsive: true, displaylogo: false });
+      Plotly.react('plot-2d-domain', traces, layout, { responsive: true, displaylogo: false });
     }
 
-    // Preset button event listeners
-    document.querySelectorAll('.preset-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        document.getElementById('functionInput').value = e.target.getAttribute('data-fn');
-        renderAll();
+    // Render 2D Codomain plane
+    function render2DCodomain(lineData, colors) {
+      const traces = [];
+
+      lineData.forEach((line, idx) => {
+        const color = colors[idx % colors.length];
+        const codomX = [];
+        const codomY = [];
+        const hoverTexts = [];
+
+        for (let i = 0; i < line.domain.length; i++) {
+          const z = line.domain[i];
+          const w = line.codomain[i];
+          if (w !== null) {
+            codomX.push(w.re);
+            codomY.push(w.im);
+            hoverTexts.push(`z = ${z.re.toFixed(2)} + ${z.im.toFixed(2)}i<br>f(z) = ${w.re.toFixed(3)} + ${w.im.toFixed(3)}i`);
+          } else {
+            codomX.push(null);
+            codomY.push(null);
+            hoverTexts.push(null);
+          }
+        }
+
+        traces.push({
+          x: codomX,
+          y: codomY,
+          text: hoverTexts,
+          mode: 'lines',
+          line: { color: color, width: 2.8 },
+          name: `Mapped: ${line.label}`,
+          hovertemplate: '%{text}<extra></extra>'
+        });
       });
+
+      const layout = {
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: '#030712',
+        margin: { l: 45, r: 20, t: 15, b: 40 },
+        showlegend: false,
+        xaxis: {
+          title: { text: 'Re(f(z))', font: { size: 11, color: '#94a3b8' } },
+          color: '#94a3b8',
+          gridcolor: '#1f2937',
+          zerolinecolor: '#64748b',
+          scaleanchor: 'y',
+          scaleratio: 1
+        },
+        yaxis: {
+          title: { text: 'Im(f(z))', font: { size: 11, color: '#94a3b8' } },
+          color: '#94a3b8',
+          gridcolor: '#1f2937',
+          zerolinecolor: '#64748b'
+        }
+      };
+
+      Plotly.react('plot-2d-codomain', traces, layout, { responsive: true, displaylogo: false });
+    }
+
+    // Master update function
+    function updateAllPlots() {
+      if (!compileCurrentFunction()) return;
+      const lineData = computeMappingData();
+      const colors = getPalette(lineData.length);
+
+      render3D(lineData, colors);
+      render2DDomain(lineData, colors);
+      render2DCodomain(lineData, colors);
+    }
+
+    // Animation Loop for morphing z -> f(z)
+    function toggleAnimation() {
+      const btn = document.getElementById('btn-animate');
+      const icon = document.getElementById('animate-icon');
+      const text = document.getElementById('animate-text');
+
+      if (state.isAnimating) {
+        state.isAnimating = false;
+        cancelAnimationFrame(state.animationFrameId);
+        text.textContent = 'Morph z → f(z)';
+        icon.setAttribute('data-lucide', 'play');
+        btn.classList.remove('bg-rose-600', 'hover:bg-rose-500');
+        btn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+        lucide.createIcons();
+      } else {
+        state.isAnimating = true;
+        text.textContent = 'Stop Morph';
+        icon.setAttribute('data-lucide', 'square');
+        btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
+        btn.classList.add('bg-rose-600', 'hover:bg-rose-500');
+        lucide.createIcons();
+
+        let direction = 1;
+        const morphSlider = document.getElementById('input-morph');
+        const morphVal = document.getElementById('morph-val');
+
+        function step() {
+          if (!state.isAnimating) return;
+
+          let t = state.morphT + 0.015 * direction;
+          if (t >= 1) {
+            t = 1;
+            direction = -1;
+          } else if (t <= 0) {
+            t = 0;
+            direction = 1;
+          }
+
+          state.morphT = t;
+          morphSlider.value = t;
+          morphVal.textContent = t.toFixed(2);
+
+          const lineData = computeMappingData();
+          const colors = getPalette(lineData.length);
+          render3D(lineData, colors);
+
+          state.animationFrameId = requestAnimationFrame(step);
+        }
+
+        state.animationFrameId = requestAnimationFrame(step);
+      }
+    }
+
+    // Set up DOM events
+    function setupEventListeners() {
+      // Expression change
+      const inputFunc = document.getElementById('input-func');
+      inputFunc.addEventListener('change', () => {
+        state.expression = inputFunc.value;
+        updateAllPlots();
+      });
+      inputFunc.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter') {
+          state.expression = inputFunc.value;
+          updateAllPlots();
+        }
+      });
+
+      // Presets
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const fn = btn.getAttribute('data-func');
+          inputFunc.value = fn;
+          state.expression = fn;
+          updateAllPlots();
+        });
+      });
+
+      // Mode tabs
+      const modeVert = document.getElementById('mode-vertical');
+      const modeHoriz = document.getElementById('mode-horizontal');
+      const modeBoth = document.getElementById('mode-both');
+
+      const setMode = (mode) => {
+        state.gridMode = mode;
+        [modeVert, modeHoriz, modeBoth].forEach(b => {
+          b.className = 'mode-tab-btn py-1.5 text-xs rounded-lg font-medium text-slate-400 hover:text-white transition';
+        });
+        if (mode === 'vertical') modeVert.className = 'mode-tab-btn py-1.5 text-xs rounded-lg font-medium bg-indigo-600 text-white transition';
+        if (mode === 'horizontal') modeHoriz.className = 'mode-tab-btn py-1.5 text-xs rounded-lg font-medium bg-indigo-600 text-white transition';
+        if (mode === 'both') modeBoth.className = 'mode-tab-btn py-1.5 text-xs rounded-lg font-medium bg-indigo-600 text-white transition';
+        updateAllPlots();
+      };
+
+      modeVert.addEventListener('click', () => setMode('vertical'));
+      modeHoriz.addEventListener('click', () => setMode('horizontal'));
+      modeBoth.addEventListener('click', () => setMode('both'));
+
+      // Constant x values
+      const xInput = document.getElementById('input-x-constants');
+      const xLbl = document.getElementById('x-count-lbl');
+      xInput.addEventListener('change', () => {
+        const parts = xInput.value.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+        if (parts.length > 0) {
+          state.xConstants = parts;
+          xLbl.textContent = `${parts.length} lines`;
+          updateAllPlots();
+        }
+      });
+
+      // Y limits & samples
+      const yMinInput = document.getElementById('input-y-min');
+      const yMaxInput = document.getElementById('input-y-max');
+      const samplesInput = document.getElementById('input-samples');
+      const samplesVal = document.getElementById('samples-val');
+
+      yMinInput.addEventListener('change', () => {
+        state.yMin = parseFloat(yMinInput.value) || -2.0;
+        updateAllPlots();
+      });
+      yMaxInput.addEventListener('change', () => {
+        state.yMax = parseFloat(yMaxInput.value) || 2.0;
+        updateAllPlots();
+      });
+      samplesInput.addEventListener('input', () => {
+        state.samples = parseInt(samplesInput.value);
+        samplesVal.textContent = state.samples;
+        updateAllPlots();
+      });
+
+      // 3D parameters
+      const sepInput = document.getElementById('input-plane-sep');
+      const sepVal = document.getElementById('sep-val');
+      sepInput.addEventListener('input', () => {
+        state.planeSep = parseFloat(sepInput.value);
+        sepVal.textContent = state.planeSep.toFixed(2);
+        updateAllPlots();
+      });
+
+      // Connector lines
+      const checkConnectors = document.getElementById('check-connectors');
+      const inputSparsity = document.getElementById('input-sparsity');
+      const sparsityVal = document.getElementById('sparsity-val');
+
+      checkConnectors.addEventListener('change', () => {
+        state.showConnectors = checkConnectors.checked;
+        updateAllPlots();
+      });
+      inputSparsity.addEventListener('input', () => {
+        state.sparsity = parseInt(inputSparsity.value);
+        sparsityVal.textContent = `Every ${state.sparsity} pts`;
+        updateAllPlots();
+      });
+
+      // Morph slider
+      const morphInput = document.getElementById('input-morph');
+      const morphVal = document.getElementById('morph-val');
+      morphInput.addEventListener('input', () => {
+        state.morphT = parseFloat(morphInput.value);
+        morphVal.textContent = state.morphT.toFixed(2);
+        const lineData = computeMappingData();
+        const colors = getPalette(lineData.length);
+        render3D(lineData, colors);
+      });
+
+      // Plane surfaces toggle
+      const checkSurfaces = document.getElementById('check-plane-surfaces');
+      checkSurfaces.addEventListener('change', () => {
+        state.showSurfaces = checkSurfaces.checked;
+        updateAllPlots();
+      });
+
+      // Manual recompute
+      document.getElementById('btn-recompute').addEventListener('click', updateAllPlots);
+
+      // Animate morph button
+      document.getElementById('btn-animate').addEventListener('click', toggleAnimation);
+
+      // Reset camera view
+      document.getElementById('btn-reset-view').addEventListener('click', () => {
+        Plotly.relayout('plot-3d', {
+          'scene.camera.eye': { x: 1.6, y: -1.7, z: 1.1 }
+        });
+      });
+    }
+
+    // Initialize application when DOM is ready
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      setupEventListeners();
+      updateAllPlots();
     });
 
-    // Slider listener
-    document.getElementById('planeHeight').addEventListener('input', (e) => {
-      document.getElementById('heightVal').textContent = parseFloat(e.target.value).toFixed(1);
+    // Handle responsive window resizing
+    window.addEventListener('resize', () => {
+      Plotly.Plots.resize('plot-3d');
+      Plotly.Plots.resize('plot-2d-domain');
+      Plotly.Plots.resize('plot-2d-codomain');
     });
-
-    document.getElementById('renderBtn').addEventListener('click', renderAll);
-    document.getElementById('functionInput').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') renderAll();
-    });
-
-    // Initial render
-    window.addEventListener('load', renderAll);
   </script>
 </body>
 </html>
